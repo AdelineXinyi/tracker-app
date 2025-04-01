@@ -8,29 +8,27 @@
 import SwiftUI
 import CoreData
 
+import SwiftUI
+import CoreData
+
 struct SkillListView: View {
     @Environment(\.managedObjectContext) private var viewContext
-    
     @FetchRequest(
         sortDescriptors: [NSSortDescriptor(keyPath: \SkillLearning.skillName, ascending: true)],
-        animation: .default)
-    private var skills: FetchedResults<SkillLearning>
+        animation: .default
+    ) private var skills: FetchedResults<SkillLearning>
     
     @State private var showingAddView = false
     @State private var searchText = ""
     
     var filteredSkills: [SkillLearning] {
-        if searchText.isEmpty {
-            return Array(skills)
-        } else {
-            return skills.filter {
-                $0.skillName.localizedCaseInsensitiveContains(searchText)
-            }
+        searchText.isEmpty ? Array(skills) : skills.filter {
+            $0.skillName.localizedCaseInsensitiveContains(searchText)
         }
     }
     
     var body: some View {
-        NavigationView {
+        NavigationStack {
             List {
                 if filteredSkills.isEmpty {
                     EmptyStateView()
@@ -47,12 +45,20 @@ struct SkillListView: View {
             .navigationTitle("My Skills")
             .toolbar {
                 ToolbarItem(placement: .navigationBarTrailing) {
-                    AddButton(action: { showingAddView = true })
+                    Button(action: {
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.01) {
+                            showingAddView = true
+                        }
+                    }) {
+                        Image(systemName: "plus")
+                    }
+                    .buttonStyle(.plain)
                 }
             }
             .sheet(isPresented: $showingAddView) {
                 AddSkillView()
                     .environment(\.managedObjectContext, viewContext)
+                    .presentationBackground(.clear)
             }
         }
     }
@@ -63,29 +69,24 @@ struct SkillListView: View {
             do {
                 try viewContext.save()
             } catch {
-                let nsError = error as NSError
-                print("Unresolved error \(nsError), \(nsError.userInfo)")
+                print("Delete error: \(error.localizedDescription)")
             }
         }
     }
 }
 
 // MARK: - Subviews
-
 private struct SkillRow: View {
     @ObservedObject var skill: SkillLearning
     
-    var daysRemaining: Int {
-        guard let targetDate = skill.targetDate else { return 0 }
-        return Calendar.current.dateComponents([.day],
-                                             from: Date(),
-                                             to: targetDate).day ?? 0
+    private var daysRemaining: Int {
+        Calendar.current.dateComponents([.day], from: Date(), to: skill.targetDate).day ?? 0
     }
     
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             HStack {
-                Text(skill.skillName ?? "Unknown Skill")
+                Text(skill.skillName)
                     .font(.headline)
                 
                 Spacer()
@@ -99,7 +100,7 @@ private struct SkillRow: View {
                 .frame(height: 8)
             
             HStack {
-                Text("Started: \(skill.startDate?.formatted(date: .abbreviated, time: .omitted) ?? "N/A")")
+                Text("Started: \(skill.startDate.formatted(date: .abbreviated, time: .omitted))")
                     .font(.caption2)
                 
                 Spacer()
@@ -117,50 +118,16 @@ private struct SkillRow: View {
 
 private struct EmptyStateView: View {
     var body: some View {
-        VStack(spacing: 16) {
-            Image(systemName: "lightbulb")
-                .font(.system(size: 48))
-                .foregroundColor(.yellow)
-            
-            Text("No Skills Added Yet")
-                .font(.title3)
-                .fontWeight(.medium)
-            
-            Text("Start by adding a skill you want to learn")
-                .font(.subheadline)
-                .foregroundColor(.secondary)
-                .multilineTextAlignment(.center)
-        }
-        .padding()
-        .frame(maxWidth: .infinity)
+        ContentUnavailableView(
+            "No Skills Added",
+            systemImage: "lightbulb",
+            description: Text("Start by adding a skill you want to learn")
+        )
     }
 }
 
 // MARK: - Previews
-
-struct SkillListView_Previews: PreviewProvider {
-    static var previews: some View {
-        let context = PersistenceController.preview.container.viewContext
-        
-        // Clear existing data
-        let fetchRequest: NSFetchRequest<NSFetchRequestResult> = SkillLearning.fetchRequest()
-        let deleteRequest = NSBatchDeleteRequest(fetchRequest: fetchRequest)
-        _ = try? context.execute(deleteRequest)
-        
-        // Add sample skills
-        let skill1 = SkillLearning(context: context)
-        skill1.skillName = "SwiftUI"
-        skill1.startDate = Date()
-        skill1.targetDate = Calendar.current.date(byAdding: .day, value: 30, to: Date())
-        skill1.progress = 0.65
-        
-        let skill2 = SkillLearning(context: context)
-        skill2.skillName = "Machine Learning"
-        skill2.startDate = Calendar.current.date(byAdding: .day, value: -10, to: Date())
-        skill2.targetDate = Calendar.current.date(byAdding: .day, value: 60, to: Date())
-        skill2.progress = 0.25
-        
-        return SkillListView()
-            .environment(\.managedObjectContext, context)
-    }
+#Preview {
+    SkillListView()
+        .environment(\.managedObjectContext, PersistenceController.preview.container.viewContext)
 }

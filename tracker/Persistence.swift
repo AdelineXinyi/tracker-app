@@ -35,6 +35,7 @@ struct PersistenceController {
         skill.startDate = Date()
         skill.targetDate = Date().addingTimeInterval(86400 * 30) // 30 days from now
         skill.progress = 0.25
+        skill.resources = "https://developer.apple.com/tutorials/swiftui"
         
         do {
             try viewContext.save()

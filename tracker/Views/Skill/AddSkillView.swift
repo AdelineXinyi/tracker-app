@@ -8,35 +8,36 @@
 import SwiftUI
 import CoreData
 
+
+
 struct AddSkillView: View {
     @Environment(\.managedObjectContext) private var viewContext
-    @Environment(\.presentationMode) var presentationMode
+    @Environment(\.dismiss) private var dismiss
     
     // Form State
     @State private var skillName = ""
     @State private var startDate = Date()
-    @State private var targetDate = Date().addingTimeInterval(86400 * 30) // Default 30 days from now
+    @State private var targetDate = Date().addingTimeInterval(86400 * 30)
     @State private var initialProgress: Float = 0.0
     @State private var resources = ""
     
-    // Validation State
+    // Validation
     @State private var showingAlert = false
     @State private var alertMessage = ""
     
-    // Minimum date calculation
     private var minimumTargetDate: Date {
         Calendar.current.date(byAdding: .day, value: 1, to: startDate) ?? startDate
     }
     
     var body: some View {
-        NavigationView {
+        NavigationStack {
             Form {
-                Section(header: Text("Skill Information")) {
+                Section("Skill Information") {
                     TextField("Skill Name", text: $skillName)
                         .autocapitalization(.words)
                     
                     VStack(alignment: .leading) {
-                        Text("Initial Progress: \(Int(initialProgress * 100))%")
+                        Text("Initial Progress: \(Int(clampedProgress * 100))%")
                             .font(.subheadline)
                         
                         Slider(value: $initialProgress, in: 0...1, step: 0.05)
@@ -44,102 +45,97 @@ struct AddSkillView: View {
                     .padding(.vertical, 8)
                 }
                 
-                Section(header: Text("Time Frame")) {
-                    DatePicker("Start Date",
-                              selection: $startDate,
-                              displayedComponents: .date)
-                        .onChange(of: startDate) { _, newValue in
-                            if targetDate < newValue {
-                                targetDate = minimumTargetDate
-                            }
-                        }
-                    
-                    DatePicker("Target Date",
-                              selection: $targetDate,
-                              in: startDate...,
-                              displayedComponents: .date)
+                Section("Time Frame") {
+                    DatePicker("Start Date", selection: $startDate, displayedComponents: .date)
+                    DatePicker("Target Date", selection: $targetDate, in: startDate..., displayedComponents: .date)
                 }
                 
-                Section(header: Text("Learning Resources (one per line)")) {
+                Section("Learning Resources") {
                     TextEditor(text: $resources)
                         .frame(minHeight: 100)
-                        .font(.body)
+                        .overlay(
+                            resources.isEmpty ?
+                            Text("Books, tutorials, references...\n(One per line)")
+                                .foregroundColor(.secondary)
+                                .padding(.top, 8)
+                                .padding(.leading, 4) : nil,
+                            alignment: .topLeading
+                        )
                 }
                 
                 Section {
-                    Button(action: addSkill) {
-                        HStack {
-                            Spacer()
-                            Text("Add Skill")
-                                .fontWeight(.bold)
-                            Spacer()
-                        }
+                    Button("Add Skill") {
+                        addSkill()
                     }
-                    .disabled(skillName.isEmpty)
+                    .frame(maxWidth: .infinity)
+                    .disabled(!formIsValid)
                 }
             }
             .navigationTitle("New Skill")
-            .navigationBarItems(
-                leading: Button("Cancel") {
-                    presentationMode.wrappedValue.dismiss()
-                },
-                trailing: Button("Save") {
-                    addSkill()
+            .toolbar {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button("Save") {
+                        addSkill()
+                    }
+                    .disabled(!formIsValid)
+                    .buttonStyle(.plain)
                 }
-                .disabled(skillName.isEmpty)
-            )
-            .alert(isPresented: $showingAlert) {
-                Alert(
-                    title: Text("Validation Error"),
-                    message: Text(alertMessage),
-                    dismissButton: .default(Text("OK"))
-                    )
+                
+                ToolbarItem(placement: .topBarLeading) {
+                    Button("Cancel") {
+                        dismiss()
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+            .alert("Error", isPresented: $showingAlert) {
+                Button("OK", role: .cancel) { }
+            } message: {
+                Text(alertMessage)
             }
         }
+        .presentationBackground(.clear)
     }
     
+    // MARK: - Computed Properties
+    private var clampedProgress: Float {
+        max(0, min(initialProgress, 1.0))
+    }
+    
+    private var formIsValid: Bool {
+        !skillName.trimmed.isEmpty && targetDate >= startDate
+    }
+    
+    // MARK: - Core Data Operations
     private func addSkill() {
-        // Validate target date
-        guard targetDate >= startDate else {
-            alertMessage = "Target date must be after start date"
+        guard formIsValid else {
+            alertMessage = "Please complete all required fields"
             showingAlert = true
             return
         }
         
-        // Validate progress
-        guard initialProgress >= 0 && initialProgress <= 1 else {
-            alertMessage = "Progress must be between 0% and 100%"
-            showingAlert = true
-            return
-        }
-        
-        withAnimation {
+        viewContext.perform {
             let newSkill = SkillLearning(context: viewContext)
-            
-            newSkill.skillName = skillName.trimmingCharacters(in: .whitespacesAndNewlines)
+            newSkill.skillName = skillName.trimmed
             newSkill.startDate = startDate
             newSkill.targetDate = targetDate
-            newSkill.progress = initialProgress
-            newSkill.resources = resources.trimmingCharacters(in: .whitespacesAndNewlines)
+            newSkill.progress = clampedProgress
+            newSkill.resources = resources.trimmed.isEmpty ? nil : resources.trimmed
             
             do {
                 try viewContext.save()
-                presentationMode.wrappedValue.dismiss()
+                dismiss()
             } catch {
-                let nsError = error as NSError
-                alertMessage = "Error saving skill: \(nsError.localizedDescription)"
+                alertMessage = "Failed to save skill: \(error.localizedDescription)"
                 showingAlert = true
+                viewContext.rollback()
             }
         }
     }
 }
 
 // MARK: - Previews
-
-struct AddSkillView_Previews: PreviewProvider {
-    static var previews: some View {
-     
-        return AddSkillView()
-            .environment(\.managedObjectContext, PersistenceController.preview.container.viewContext)
-    }
+#Preview {
+    AddSkillView()
+        .environment(\.managedObjectContext, PersistenceController.preview.container.viewContext)
 }

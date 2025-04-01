@@ -16,9 +16,9 @@
     </entity>
     <entity name="SkillLearning" representedClassName=".SkillLearning" syncable="YES">
         <attribute name="progress" attributeType="Float" defaultValueString="0.0" usesScalarValueType="YES"/>
-        <attribute name="resource" optional="YES" attributeType="String"/>
+        <attribute name="resources" optional="YES" attributeType="String"/>
         <attribute name="skillName" attributeType="String"/>
-        <attribute name="startDate" optional="YES" attributeType="Date" usesScalarValueType="NO"/>
-        <attribute name="targetDate" optional="YES" attributeType="Date" usesScalarValueType="NO"/>
+        <attribute name="startDate" attributeType="Date" usesScalarValueType="NO"/>
+        <attribute name="targetDate" attributeType="Date" usesScalarValueType="NO"/>
     </entity>
 </model>

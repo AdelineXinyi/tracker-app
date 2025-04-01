@@ -10,12 +10,13 @@ import CoreData
 
 @objc(SkillLearning)
 public class SkillLearning: NSManagedObject, Identifiable {
+    
     // MARK: - Core Data Properties
     @NSManaged public var skillName: String
-    @NSManaged public var startDate: Date?
-    @NSManaged public var targetDate: Date?
+    @NSManaged public var startDate: Date
+    @NSManaged public var targetDate: Date
     @NSManaged public var progress: Float
-    @NSManaged public var resources: String?
+    @NSManaged @objc dynamic public var resources: String?  // Added @objc dynamic for proper KVO
     
     // MARK: - Computed Properties
     public var id: UUID {
@@ -23,8 +24,7 @@ public class SkillLearning: NSManagedObject, Identifiable {
     }
     
     var daysRemaining: Int {
-        guard let target = targetDate else { return 0 }
-        return Calendar.current.dateComponents([.day], from: Date(), to: target).day ?? 0
+        Calendar.current.dateComponents([.day], from: Date(), to: targetDate).day ?? 0
     }
     
     var formattedProgress: String {
@@ -33,6 +33,36 @@ public class SkillLearning: NSManagedObject, Identifiable {
     
     var resourceLinks: [String] {
         resources?.components(separatedBy: "\n").filter { !$0.isEmpty } ?? []
+    }
+    
+    // MARK: - KVO Compliance
+    @objc class func keyPathsForValuesAffectingResources() -> Set<String> {
+        return []
+    }
+    
+    // MARK: - Resource Management
+    @objc func addResource(_ resource: String) {
+        guard !resource.isEmpty else { return }
+        
+        self.willChangeValue(for: \.resources)
+        var current = resourceLinks
+        current.append(resource)
+        self.resources = current.joined(separator: "\n")
+        self.didChangeValue(for: \.resources)
+    }
+    
+    @objc func removeResource(_ resource: String) {
+        self.willChangeValue(for: \.resources)
+        var current = resourceLinks
+        current.removeAll { $0 == resource }
+        self.resources = current.joined(separator: "\n")
+        self.didChangeValue(for: \.resources)
+    }
+    
+    @objc func setResourcesArray(_ resources: [String]) {
+        self.willChangeValue(for: \.resources)
+        self.resources = resources.joined(separator: "\n")
+        self.didChangeValue(for: \.resources)
     }
     
     // MARK: - Fetch Requests
@@ -54,7 +84,7 @@ public class SkillLearning: NSManagedObject, Identifiable {
         newSkill.startDate = start
         newSkill.targetDate = target
         newSkill.progress = progress
-        newSkill.resources = resources.joined(separator: "\n")
+        newSkill.setResourcesArray(resources)  // Use the safe setter
         return newSkill
     }
     
@@ -71,6 +101,16 @@ public class SkillLearning: NSManagedObject, Identifiable {
         } catch {
             print("Error fetching active skills: \(error)")
             return []
+        }
+    }
+    
+    // MARK: - Save Validation
+    public override func willSave() {
+        super.willSave()
+        
+        // Clean up empty resources
+        if resources?.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ?? false {
+            resources = nil
         }
     }
 }

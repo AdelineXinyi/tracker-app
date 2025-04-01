@@ -1,62 +1,41 @@
-//
-//  SkillDetailView.swift
-//  tracker
-//
-//  Created by xinyi li on 3/30/25.
-//
-
 import SwiftUI
 import CoreData
 
+
 struct SkillDetailView: View {
     @Environment(\.managedObjectContext) private var viewContext
-    @Environment(\.presentationMode) var presentationMode
-    
+    @Environment(\.dismiss) private var dismiss
     @ObservedObject var skill: SkillLearning
     
     @State private var showingEditView = false
     @State private var showingResourceSheet = false
     @State private var newResource = ""
     
-    // Computed properties for date formatting
-    var formattedStartDate: String {
-        skill.startDate?.formatted(date: .abbreviated, time: .omitted) ?? "Not set"
+    // Computed properties
+    private var daysRemaining: Int {
+        Calendar.current.dateComponents([.day], from: Date(), to: skill.targetDate).day ?? 0
     }
     
-    var formattedTargetDate: String {
-        skill.targetDate?.formatted(date: .abbreviated, time: .omitted) ?? "Not set"
-    }
-    
-    var daysRemaining: Int {
-        guard let target = skill.targetDate else { return 0 }
-        return Calendar.current.dateComponents([.day], from: Date(), to: target).day ?? 0
-    }
-    
-    var progressStatus: String {
+    private var progressStatus: String {
         switch skill.progress {
-        case 0..<0.3:
-            return "Just Started"
-        case 0.3..<0.7:
-            return "In Progress"
-        case 0.7..<1:
-            return "Almost There"
-        case 1:
-            return "Completed"
-        default:
-            return "Unknown"
+        case 0..<0.3: return "Just Started"
+        case 0.3..<0.7: return "In Progress"
+        case 0.7..<1: return "Almost There"
+        case 1: return "Completed"
+        default: return "Unknown"
         }
     }
     
-    var resources: [String] {
-        (skill.resources ?? "").components(separatedBy: "\n").filter { !$0.isEmpty }
+    private var resources: [String] {
+        skill.resources?.components(separatedBy: "\n").filter { !$0.isEmpty } ?? []
     }
-
+    
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 20) {
                 // Header Section
                 VStack(alignment: .leading, spacing: 8) {
-                    Text(skill.skillName ?? "Unknown Skill")
+                    Text(skill.skillName)
                         .font(.largeTitle)
                         .fontWeight(.bold)
                     
@@ -64,124 +43,162 @@ struct SkillDetailView: View {
                         .font(.subheadline)
                         .foregroundColor(.secondary)
                 }
-                .padding(.bottom, 10)
                 
                 // Progress Section
-                VStack(alignment: .leading, spacing: 12) {
-                    HStack {
-                        Text("Progress: \(Int(skill.progress * 100))%")
-                            .font(.headline)
-                        
-                        Spacer()
-                        
-                        Text("\(daysRemaining) days left")
-                            .foregroundColor(daysRemaining < 7 ? .red : .secondary)
-                    }
-                    
-                    ProgressBar(value: skill.progress)
-                        .frame(height: 12)
-                    
-                    Slider(value: $skill.progress, in: 0...1, step: 0.01)
-                        .accentColor(progressColor)
-                        .onChange(of: skill.progress) { _ in
-                            saveChanges()
-                        }
-                }
-                .padding()
-                .background(Color(.systemBackground))
-                .cornerRadius(12)
-                .shadow(color: Color.black.opacity(0.05), radius: 5, x: 0, y: 2)
+                progressSection
                 
                 // Dates Section
-                HStack(spacing: 20) {
-                    VStack(alignment: .leading) {
-                        Text("Started")
-                            .font(.caption)
-                            .foregroundColor(.secondary)
-                        Text(formattedStartDate)
-                            .font(.subheadline)
-                    }
-                    
-                    Divider()
-                        .frame(height: 30)
-                    
-                    VStack(alignment: .leading) {
-                        Text("Target")
-                            .font(.caption)
-                            .foregroundColor(.secondary)
-                        Text(formattedTargetDate)
-                            .font(.subheadline)
-                    }
-                }
-                .padding()
-                .frame(maxWidth: .infinity, alignment: .leading)
+                datesSection
                 
                 // Resources Section
-                VStack(alignment: .leading, spacing: 10) {
-                    HStack {
-                        Text("Learning Resources")
-                            .font(.headline)
-                        
-                        Spacer()
-                        
-                        Button(action: { showingResourceSheet = true }) {
-                            Image(systemName: "plus")
-                                .font(.subheadline)
-                        }
-                    }
-                    
-                    if resources.isEmpty {
-                        Text("No resources added yet")
-                            .font(.subheadline)
-                            .foregroundColor(.secondary)
-                    } else {
-                        ForEach(resources, id: \.self) { resource in
-                            HStack {
-                                Link(destination: URL(string: resource) ?? URL(string: "https://example.com")!) {
-                                    Text(resource)
-                                        .font(.subheadline)
-                                        .lineLimit(1)
-                                }
-                                
-                                Spacer()
-                                
-                                Button(action: {
-                                    removeResource(resource)
-                                }) {
-                                    Image(systemName: "trash")
-                                        .foregroundColor(.red)
-                                }
-                            }
-                            .padding(.vertical, 4)
-                        }
-                    }
-                }
-                .padding()
-                .background(Color(.systemBackground))
-                .cornerRadius(12)
-                .shadow(color: Color.black.opacity(0.05), radius: 5, x: 0, y: 2)
-                
-                Spacer()
+                resourcesSection
             }
             .padding()
         }
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
-            ToolbarItem(placement: .navigationBarTrailing) {
+            ToolbarItem(placement: .topBarTrailing) {
                 Button("Edit") {
                     showingEditView = true
                 }
+                .buttonStyle(.plain)
             }
         }
         .sheet(isPresented: $showingEditView) {
             EditSkillView(skill: skill)
                 .environment(\.managedObjectContext, viewContext)
+                .presentationBackground(.clear)
         }
         .sheet(isPresented: $showingResourceSheet) {
             resourceInputSheet
+                .presentationBackground(.clear)
         }
     }
     
+    // MARK: - Subviews
+    private var progressSection: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack {
+                Text("Progress: \(Int(skill.progress * 100))%")
+                    .font(.headline)
+                
+                Spacer()
+                
+                Text("\(daysRemaining) days left")
+                    .foregroundColor(daysRemaining < 7 ? .red : .secondary)
+            }
+            
+            ProgressBar(value: skill.progress)
+                .frame(height: 12)
+            
+            Slider(value: $skill.progress, in: 0...1, step: 0.01)
+                .tint(progressColor)
+                .onChange(of: skill.progress) { _, _ in
+                    saveChanges()
+                }
+        }
+        .padding()
+        .background(Color(.systemBackground))
+        .clipShape(RoundedRectangle(cornerRadius: 12))
+        .shadow(radius: 2)
+    }
+    
+    private var datesSection: some View {
+        HStack(spacing: 20) {
+            VStack(alignment: .leading) {
+                Text("Started")
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+                Text(skill.startDate.formatted(date: .abbreviated, time: .omitted))
+                    .font(.subheadline)
+            }
+            
+            Divider()
+                .frame(height: 30)
+            
+            VStack(alignment: .leading) {
+                Text("Target")
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+                Text(skill.targetDate.formatted(date: .abbreviated, time: .omitted))
+                    .font(.subheadline)
+            }
+        }
+        .padding()
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+    
+    private var resourcesSection: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            HStack {
+                Text("Learning Resources")
+                    .font(.headline)
+                
+                Spacer()
+                
+                Button(action: { showingResourceSheet = true }) {
+                    Image(systemName: "plus")
+                }
+                .buttonStyle(.plain)
+            }
+            
+            if resources.isEmpty {
+                ContentUnavailableView(
+                    "No Resources",
+                    systemImage: "book"
+                )
+            } else {
+                ForEach(resources, id: \.self) { resource in
+                    HStack {
+                        Text(resource)
+                            .font(.subheadline)
+                            .lineLimit(2)
+                        
+                        Spacer()
+                        
+                        Button(action: { removeResource(resource) }) {
+                            Image(systemName: "trash")
+                                .foregroundColor(.red)
+                        }
+                    }
+                    .padding(.vertical, 4)
+                }
+            }
+        }
+        .padding()
+        .background(Color(.systemBackground))
+        .clipShape(RoundedRectangle(cornerRadius: 12))
+        .shadow(radius: 2)
+    }
+    
+    private var resourceInputSheet: some View {
+        NavigationStack {
+            Form {
+                Section("Add Resource") {
+                    TextField("Book, video, article...", text: $newResource)
+                        .autocapitalization(.sentences)
+                }
+                
+                Section {
+                    Button("Add") {
+                        addResource()
+                    }
+                    .disabled(newResource.trimmed.isEmpty)
+                }
+            }
+            .navigationTitle("Add Resource")
+            .toolbar {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button("Cancel") {
+                        showingResourceSheet = false
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+        }
+    }
+    
+    // MARK: - Helper Functions
     private var progressColor: Color {
         switch skill.progress {
         case 0..<0.3: return .red
@@ -192,61 +209,42 @@ struct SkillDetailView: View {
         }
     }
     
-    private var resourceInputSheet: some View {
-        NavigationView {
-            Form {
-                Section(header: Text("Add Resource URL")) {
-                    TextField("https://example.com", text: $newResource)
-                        .keyboardType(.URL)
-                        .autocapitalization(.none)
-                        .disableAutocorrection(true)
-                }
-                
-                Section {
-                    Button("Add Resource") {
-                        addResource()
-                        showingResourceSheet = false
-                    }
-                    .disabled(newResource.isEmpty || !newResource.isValidURL)
-                }
-            }
-            .navigationTitle("Add Resource")
-            .navigationBarItems(trailing: Button("Cancel") {
-                showingResourceSheet = false
-            })
-        }
-    }
-    
     private func saveChanges() {
         do {
             try viewContext.save()
         } catch {
-            print("Error saving skill: \(error.localizedDescription)")
+            print("Save error: \(error.localizedDescription)")
         }
     }
     
     private func addResource() {
-        var currentResources = resources
-        currentResources.append(newResource)
-        skill.resources = currentResources.joined(separator: "\n")
-        newResource = ""
-        saveChanges()
+        let trimmed = newResource.trimmed
+        guard !trimmed.isEmpty else { return }
+        
+        viewContext.perform {
+            var current = resources
+            current.append(trimmed)
+            skill.resources = current.joined(separator: "\n")
+            newResource = ""
+            saveChanges()
+            showingResourceSheet = false
+        }
     }
     
     private func removeResource(_ resource: String) {
-        var currentResources = resources
-        currentResources.removeAll { $0 == resource }
-        skill.resources = currentResources.joined(separator: "\n")
-        saveChanges()
+        viewContext.perform {
+            skill.resources = resources
+                .filter { $0 != resource }
+                .joined(separator: "\n")
+            saveChanges()
+        }
     }
 }
 
-// MARK: - Edit Skill View
-
+// MARK: - Edit View
 struct EditSkillView: View {
     @Environment(\.managedObjectContext) private var viewContext
-    @Environment(\.presentationMode) var presentationMode
-    
+    @Environment(\.dismiss) private var dismiss
     @ObservedObject var skill: SkillLearning
     
     @State private var skillName: String
@@ -255,19 +253,19 @@ struct EditSkillView: View {
     
     init(skill: SkillLearning) {
         self.skill = skill
-        _skillName = State(initialValue: skill.skillName ?? "")
-        _startDate = State(initialValue: skill.startDate ?? Date())
-        _targetDate = State(initialValue: skill.targetDate ?? Date().addingTimeInterval(86400 * 30))
+        _skillName = State(initialValue: skill.skillName)
+        _startDate = State(initialValue: skill.startDate)
+        _targetDate = State(initialValue: skill.targetDate)
     }
     
     var body: some View {
-        NavigationView {
+        NavigationStack {
             Form {
-                Section(header: Text("Skill Info")) {
+                Section("Skill Info") {
                     TextField("Skill Name", text: $skillName)
                 }
                 
-                Section(header: Text("Dates")) {
+                Section("Dates") {
                     DatePicker("Start Date", selection: $startDate, displayedComponents: .date)
                     DatePicker("Target Date", selection: $targetDate, in: startDate..., displayedComponents: .date)
                 }
@@ -275,57 +273,46 @@ struct EditSkillView: View {
                 Section {
                     Button("Save Changes") {
                         saveChanges()
-                        presentationMode.wrappedValue.dismiss()
+                        dismiss()
                     }
-                    .disabled(skillName.isEmpty)
+                    .disabled(skillName.trimmed.isEmpty)
                 }
             }
             .navigationTitle("Edit Skill")
-            .navigationBarItems(trailing: Button("Cancel") {
-                presentationMode.wrappedValue.dismiss()
-            })
+            .toolbar {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button("Cancel") { dismiss() }
+                        .buttonStyle(.plain)
+                }
+            }
         }
     }
     
     private func saveChanges() {
-        skill.skillName = skillName
-        skill.startDate = startDate
-        skill.targetDate = targetDate
-        do {
-            try viewContext.save()
-        } catch {
-            print("Error saving skill: \(error.localizedDescription)")
+        viewContext.perform {
+            skill.skillName = skillName.trimmed
+            skill.startDate = startDate
+            skill.targetDate = targetDate
+            do {
+                try viewContext.save()
+            } catch {
+                print("Save error: \(error.localizedDescription)")
+            }
         }
-    }
-}
-
-// MARK: - URL Validation Extension
-
-extension String {
-    var isValidURL: Bool {
-        guard let url = URL(string: self) else { return false }
-        return UIApplication.shared.canOpenURL(url)
     }
 }
 
 // MARK: - Previews
+#Preview {
+    NavigationStack {
+        SkillDetailView(skill: SkillLearning(context: PersistenceController.preview.container.viewContext))
+    }
+    .environment(\.managedObjectContext, PersistenceController.preview.container.viewContext)
+}
 
-struct SkillDetailView_Previews: PreviewProvider {
-    static var previews: some View {
-        let context = PersistenceController.preview.container.viewContext
-        let skill = SkillLearning(context: context)
-        skill.skillName = "SwiftUI"
-        skill.startDate = Date().addingTimeInterval(-86400 * 10)
-        skill.targetDate = Date().addingTimeInterval(86400 * 20)
-        skill.progress = 0.65
-        skill.resources = """
-        https://developer.apple.com/tutorials/swiftui
-        https://www.hackingwithswift.com/quick-start/swiftui
-        """
-        
-        return NavigationView {
-            SkillDetailView(skill: skill)
-                .environment(\.managedObjectContext, context)
-        }
+// Helper extension
+extension String {
+    var trimmed: String {
+        self.trimmingCharacters(in: .whitespacesAndNewlines)
     }
 }
