@@ -42,6 +42,7 @@ struct AddSkillView: View {
                 Section("Skill Information") {
                     TextField("Skill Name", text: $skillName)
                         .autocapitalization(.words)
+                        .submitLabel(.done)
                     
                     VStack(alignment: .leading) {
                         Text("Initial Progress: \(Int(clampedProgress * 100))%")
