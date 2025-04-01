@@ -187,6 +187,7 @@ struct SkillDetailView: View {
                 }
             }
             .navigationTitle("Add Resource")
+           
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
                     Button("Cancel") {
@@ -279,6 +280,7 @@ struct EditSkillView: View {
                 }
             }
             .navigationTitle("Edit Skill")
+           
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
                     Button("Cancel") { dismiss() }

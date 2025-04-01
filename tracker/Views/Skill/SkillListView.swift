@@ -43,6 +43,8 @@ struct SkillListView: View {
             }
             .searchable(text: $searchText, placement: .navigationBarDrawer(displayMode: .always))
             .navigationTitle("My Skills")
+            .deleteDisabled(viewContext.hasChanges)
+            
             .toolbar {
                 ToolbarItem(placement: .navigationBarTrailing) {
                     Button(action: {
@@ -64,12 +66,29 @@ struct SkillListView: View {
     }
     
     private func deleteSkills(offsets: IndexSet) {
-        withAnimation {
-            offsets.map { skills[$0] }.forEach(viewContext.delete)
+        // 1. Get the items to delete ON THE MAIN THREAD
+        let itemsToDelete = offsets.map { skills[$0] }
+        
+        // 2. Use Task to handle the deletion asynchronously
+        Task {
+            await MainActor.run {
+                withAnimation {
+                    // 3. Perform deletion on main thread
+                    itemsToDelete.forEach { skill in
+                        viewContext.delete(skill)
+                    }
+                }
+            }
+            
+            // 4. Save asynchronously
             do {
-                try viewContext.save()
+                try await viewContext.perform {
+                    try viewContext.save()
+                }
             } catch {
-                print("Delete error: \(error.localizedDescription)")
+                await MainActor.run {
+                    print("Delete error: \(error.localizedDescription)")
+                }
             }
         }
     }
