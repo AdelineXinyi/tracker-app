@@ -7,7 +7,7 @@
 
 import SwiftUI
 import CoreData
-import SwiftUI
+
 
 struct SkillListView: View {
     @Environment(\.managedObjectContext) private var viewContext
@@ -19,7 +19,10 @@ struct SkillListView: View {
     @State private var showingAddView = false
     @State private var searchText = ""
     @State private var skillToColorize: SkillLearning?
-    
+    @State private var summaryText = "Tap analyze to generate insights"
+    @State private var isLoading = false
+    private let llmService = LLMService(apiKey: Config.deepInfraKey)
+
     var filteredSkills: [SkillLearning] {
         searchText.isEmpty ? Array(skills) : skills.filter {
             $0.skillName.localizedCaseInsensitiveContains(searchText)
@@ -29,6 +32,26 @@ struct SkillListView: View {
     var body: some View {
         NavigationStack {
             List {
+                Section(header: Text("AI Analysis")) {
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text(summaryText)
+                            .font(.subheadline)
+                        
+                        if isLoading {
+                            ProgressView()
+                                .frame(maxWidth: .infinity)
+                        } else {
+                            Button(action: {
+                                Task { await generateSummary() }
+                            }) {
+                                Text("Analyze Progress")
+                                    .font(.caption)
+                            }
+                        }
+                    }
+                    .padding(.vertical, 8)
+                }
+                
                 if filteredSkills.isEmpty {
                     EmptyStateView()
                         .listRowBackground(Color.clear)
@@ -37,7 +60,7 @@ struct SkillListView: View {
                         NavigationLink(destination: SkillDetailView(skill: skill)) {
                             SkillRow(skill: skill)
                         }
-                        .listRowBackground(skill.skillColor.opacity(0.2)) // Subtle row background
+                        .listRowBackground(skill.skillColor.opacity(0.2))
                         .swipeActions(edge: .leading) {
                             Button {
                                 skillToColorize = skill
@@ -99,6 +122,17 @@ struct SkillListView: View {
         }
     }
     
+    private func generateSummary() async {
+        isLoading = true
+        do {
+            let prompt = LLMHelper.prepareSkillsPrompt(for: Array(skills))
+            summaryText = try await llmService.generateSummary(for: prompt)
+        } catch {
+            summaryText = "Analysis failed: \(error.localizedDescription)"
+        }
+        isLoading = false
+    }
+    
     private func deleteSkills(offsets: IndexSet) {
         let itemsToDelete = offsets.map { skills[$0] }
         
@@ -124,7 +158,7 @@ struct SkillListView: View {
     }
 }
 
-// MARK: - Subviews
+// MARK: - Subviews (unchanged from original)
 private struct SkillRow: View {
     @ObservedObject var skill: SkillLearning
     
@@ -137,7 +171,7 @@ private struct SkillRow: View {
             HStack {
                 Text(skill.skillName)
                     .font(.headline)
-                    .foregroundColor(skill.skillColor) // Use skill color for text
+                    .foregroundColor(skill.skillColor)
                 
                 Spacer()
                 
@@ -148,7 +182,7 @@ private struct SkillRow: View {
             
             ProgressBar(value: skill.progress)
                 .frame(height: 8)
-                .tint(skill.skillColor) // Color the progress bar
+                .tint(skill.skillColor)
             
             HStack {
                 Text("Started: \(skill.startDate.formatted(date: .abbreviated, time: .omitted))")
@@ -166,7 +200,7 @@ private struct SkillRow: View {
         .padding(.vertical, 8)
         .background(
             RoundedRectangle(cornerRadius: 8)
-                .fill(skill.skillColor.opacity(0.1))) // Subtle background
+                .fill(skill.skillColor.opacity(0.1)))
     }
 }
 
@@ -181,7 +215,7 @@ private struct EmptyStateView: View {
     }
 }
 
-// MARK: - Previews
+// MARK: - Previews (unchanged)
 #Preview {
     SkillListView()
         .environment(\.managedObjectContext, PersistenceController.preview.container.viewContext)

@@ -7,6 +7,9 @@
 import SwiftUI
 import CoreData
 
+import SwiftUI
+import CoreData
+
 struct ResearchListView: View {
     @Environment(\.managedObjectContext) private var viewContext
     @FetchRequest(
@@ -15,10 +18,33 @@ struct ResearchListView: View {
     private var researches: FetchedResults<ResearchApplication>
     
     @State private var showingAddView = false
-    
+    @State private var summaryText = "Tap analyze to generate insights"
+    @State private var isLoading = false
+    private let llmService = LLMService(apiKey: Config.deepInfraKey)
+
     var body: some View {
         NavigationView {
             List {
+                Section(header: Text("AI Analysis")) {
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text(summaryText)
+                            .font(.subheadline)
+                        
+                        if isLoading {
+                            ProgressView()
+                                .frame(maxWidth: .infinity)
+                        } else {
+                            Button(action: {
+                                Task { await generateSummary() }
+                            }) {
+                                Text("Analyze Trends")
+                                    .font(.caption)
+                            }
+                        }
+                    }
+                    .padding(.vertical, 8)
+                }
+                
                 Section(header: Text("Research Applications")) {
                     ForEach(researches) { research in
                         NavigationLink(destination: ResearchDetailView(research: research)) {
@@ -47,6 +73,17 @@ struct ResearchListView: View {
                     .environment(\.managedObjectContext, viewContext)
             }
         }
+    }
+    
+    private func generateSummary() async {
+        isLoading = true
+        do {
+            let prompt = LLMHelper.prepareResearchPrompt(for: Array(researches))
+            summaryText = try await llmService.generateSummary(for: prompt)
+        } catch {
+            summaryText = "Analysis failed: \(error.localizedDescription)"
+        }
+        isLoading = false
     }
     
     private func deleteResearches(offsets: IndexSet) {

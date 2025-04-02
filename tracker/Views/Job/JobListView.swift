@@ -8,6 +8,7 @@
 import SwiftUI
 import CoreData
 
+
 struct JobListView: View {
     @Environment(\.managedObjectContext) private var viewContext
     @FetchRequest(
@@ -16,13 +17,32 @@ struct JobListView: View {
     private var jobs: FetchedResults<JobApplication>
     
     @State private var showingAddView = false
-    
+    @State private var summaryText = "Tap analyze to generate insights"
+    @State private var isLoading = false
+    private let llmService = LLMService(apiKey: Config.deepInfraKey)
+
     var body: some View {
         NavigationView {
             List {
-//                Section(header: Text("Statistics")) {
-//                    JobStatsView()
-//                }
+                Section(header: Text("AI Analysis")) {
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text(summaryText)
+                            .font(.subheadline)
+                        
+                        if isLoading {
+                            ProgressView()
+                                .frame(maxWidth: .infinity)
+                        } else {
+                            Button(action: {
+                                Task { await generateSummary() }
+                            }) {
+                                Text("Analyze Trends")
+                                    .font(.caption)
+                            }
+                        }
+                    }
+                    .padding(.vertical, 8)
+                }
                 
                 Section(header: Text("Recent Applications")) {
                     ForEach(jobs) { job in
@@ -52,6 +72,17 @@ struct JobListView: View {
         }
     }
     
+    private func generateSummary() async {
+        isLoading = true
+        do {
+            let prompt = LLMHelper.prepareJobPrompt(for: Array(jobs))
+            summaryText = try await llmService.generateSummary(for: prompt)
+        } catch {
+            summaryText = "Analysis failed: \(error.localizedDescription)"
+        }
+        isLoading = false
+    }
+    
     private func deleteJobs(offsets: IndexSet) {
         withAnimation {
             offsets.map { jobs[$0] }.forEach(viewContext.delete)
@@ -64,17 +95,3 @@ struct JobListView: View {
         }
     }
 }
-
-//struct JobStatsView: View {
-//    @Environment(\.managedObjectContext) private var viewContext
-//    
-//    var body: some View {
-//        let stats = JobApplication.countByStatus(in: viewContext)
-//        
-//        HStack {
-//            StatsCard(value: "\(stats.values.reduce(0, +))", label: "Total", systemImage: "briefcase")
-//            StatsCard(value: "\(stats["Applied"] ?? 0)", label: "Applied", systemImage: "envelope")
-//            StatsCard(value: "\(stats["Interview"] ?? 0)", label: "Interview", systemImage: "person.2")
-//        }
-//    }
-//}
