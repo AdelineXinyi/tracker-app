@@ -9,28 +9,36 @@ import SwiftUI
 
 struct DashboardView: View {
     var body: some View {
-        TabView {
-            NavigationView {
-                JobListView()
-            }
-            .tabItem {
-                Label("Jobs", systemImage: "briefcase")
-            }
+        ZStack {
+            // Background color that fills entire screen
+            Color("AppBackground")
+                
             
-            NavigationView {
-                ResearchListView()
-            }
-            .tabItem {
-                Label("Research", systemImage: "graduationcap")
-            }
-            
-            NavigationView {
-                SkillListView()
-            }
-            .tabItem {
-                Label("Skills", systemImage: "book")
+            // Your tab view content
+            TabView {
+                NavigationView {
+                    JobListView()
+                }
+                .tabItem {
+                    Label("Jobs", systemImage: "briefcase")
+                }
+                
+                NavigationView {
+                    ResearchListView()
+                }
+                .tabItem {
+                    Label("Research", systemImage: "graduationcap")
+                }
+                
+                NavigationView {
+                    SkillListView()
+                }
+                .tabItem {
+                    Label("Skills", systemImage: "book")
+                }
             }
         }
+        .ignoresSafeArea()
     }
 }
 

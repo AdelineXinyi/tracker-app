@@ -15,6 +15,7 @@
         <attribute name="universityName" attributeType="String"/>
     </entity>
     <entity name="SkillLearning" representedClassName=".SkillLearning" syncable="YES">
+        <attribute name="colorData" optional="YES" attributeType="Binary"/>
         <attribute name="progress" attributeType="Float" defaultValueString="0.0" usesScalarValueType="YES"/>
         <attribute name="resources" optional="YES" attributeType="String"/>
         <attribute name="skillName" attributeType="String"/>

@@ -14,6 +14,7 @@ struct trackerApp: App {
         WindowGroup {
             DashboardView()
                 .environment(\.managedObjectContext, persistenceController.container.viewContext)
+                
         }
     }
 }

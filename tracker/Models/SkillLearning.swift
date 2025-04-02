@@ -7,6 +7,8 @@
 
 import Foundation
 import CoreData
+import UIKit
+import SwiftUI
 
 @objc(SkillLearning)
 public class SkillLearning: NSManagedObject, Identifiable {
@@ -16,7 +18,28 @@ public class SkillLearning: NSManagedObject, Identifiable {
     @NSManaged public var startDate: Date
     @NSManaged public var targetDate: Date
     @NSManaged public var progress: Float
-    @NSManaged @objc dynamic public var resources: String?  // Added @objc dynamic for proper KVO
+    @NSManaged @objc dynamic public var resources: String?
+    @NSManaged public var colorData: Data?
+    
+    // MARK: - Color Management
+    public var skillColor: Color {
+        get {
+            if let colorData = self.colorData,
+               let uiColor = try? NSKeyedUnarchiver.unarchivedObject(ofClass: UIColor.self, from: colorData) {
+                return Color(uiColor)
+            }
+            return .blue // Default color
+        }
+        set {
+            let uiColor = UIColor(newValue)
+            self.colorData = try? NSKeyedArchiver.archivedData(withRootObject: uiColor, requiringSecureCoding: false)
+        }
+    }
+    
+    public func assignRandomColor() {
+        let colors: [Color] = [.red, .green, .blue, .orange, .purple, .pink, .teal, .mint, .indigo]
+        self.skillColor = colors.randomElement() ?? .blue
+    }
     
     // MARK: - Computed Properties
     public var id: UUID {
@@ -77,6 +100,7 @@ public class SkillLearning: NSManagedObject, Identifiable {
         target: Date,
         progress: Float = 0,
         resources: [String] = [],
+        color: Color? = nil,
         in context: NSManagedObjectContext
     ) -> SkillLearning {
         let newSkill = SkillLearning(context: context)
@@ -84,7 +108,8 @@ public class SkillLearning: NSManagedObject, Identifiable {
         newSkill.startDate = start
         newSkill.targetDate = target
         newSkill.progress = progress
-        newSkill.setResourcesArray(resources)  // Use the safe setter
+        newSkill.setResourcesArray(resources)
+        newSkill.skillColor = color ?? Color.blue
         return newSkill
     }
     
@@ -97,7 +122,14 @@ public class SkillLearning: NSManagedObject, Identifiable {
         ]
         
         do {
-            return try context.fetch(request)
+            let results = try context.fetch(request)
+            // Ensure all skills have a color
+            results.forEach { skill in
+                if skill.colorData == nil {
+                    skill.assignRandomColor()
+                }
+            }
+            return results
         } catch {
             print("Error fetching active skills: \(error)")
             return []
@@ -111,6 +143,11 @@ public class SkillLearning: NSManagedObject, Identifiable {
         // Clean up empty resources
         if resources?.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ?? false {
             resources = nil
+        }
+        
+        // Ensure color data is set
+        if colorData == nil {
+            assignRandomColor()
         }
     }
 }

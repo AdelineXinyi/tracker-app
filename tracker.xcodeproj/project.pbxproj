@@ -34,6 +34,7 @@
 		BA2047DA2D99BCEF00063EE5 /* ResearchApplication.swift in Sources */ = {isa = PBXBuildFile; fileRef = BA2047D92D99BCEF00063EE5 /* ResearchApplication.swift */; };
 		BA2047DC2D99BCFA00063EE5 /* SkillLearning.swift in Sources */ = {isa = PBXBuildFile; fileRef = BA2047DB2D99BCFA00063EE5 /* SkillLearning.swift */; };
 		BA2047DE2D99BDB500063EE5 /* JobDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BA2047DD2D99BDB500063EE5 /* JobDetailView.swift */; };
+		BA3D4B152D9CF74800A93872 /* UserDefaults+Extensions.swift in Sources */ = {isa = PBXBuildFile; fileRef = BA3D4B142D9CF74800A93872 /* UserDefaults+Extensions.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -84,6 +85,7 @@
 		BA2047D92D99BCEF00063EE5 /* ResearchApplication.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ResearchApplication.swift; sourceTree = "<group>"; };
 		BA2047DB2D99BCFA00063EE5 /* SkillLearning.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SkillLearning.swift; sourceTree = "<group>"; };
 		BA2047DD2D99BDB500063EE5 /* JobDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = JobDetailView.swift; sourceTree = "<group>"; };
+		BA3D4B142D9CF74800A93872 /* UserDefaults+Extensions.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "UserDefaults+Extensions.swift"; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -239,6 +241,7 @@
 			children = (
 				BA2047D12D99B9CE00063EE5 /* CoreDataHelper.swift */,
 				BA2047D32D99B9DA00063EE5 /* DateHelper.swift */,
+				BA3D4B142D9CF74800A93872 /* UserDefaults+Extensions.swift */,
 			);
 			path = Utilities;
 			sourceTree = "<group>";
@@ -380,6 +383,7 @@
 				BA0223DF2D99959F00CAB6BC /* tracker.xcdatamodeld in Sources */,
 				BA2047AD2D99B5FD00063EE5 /* JobListView.swift in Sources */,
 				BA2047D42D99B9DA00063EE5 /* DateHelper.swift in Sources */,
+				BA3D4B152D9CF74800A93872 /* UserDefaults+Extensions.swift in Sources */,
 				BA2047C52D99B8A700063EE5 /* ResearchDetailView.swift in Sources */,
 				BA2047D82D99BA0800063EE5 /* AddButton.swift in Sources */,
 				BA2047DA2D99BCEF00063EE5 /* ResearchApplication.swift in Sources */,
