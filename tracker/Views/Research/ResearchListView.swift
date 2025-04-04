@@ -8,9 +8,6 @@ import SwiftUI
 import CoreData
 
 
-import SwiftUI
-import CoreData
-
 struct ResearchListView: View {
     @Environment(\.managedObjectContext) private var viewContext
     @FetchRequest(
@@ -21,8 +18,7 @@ struct ResearchListView: View {
     @State private var showingAddView = false
     @State private var summaryText = ""
     @State private var isLoading = false
-    @State private var showingDeleteAlert = false
-    @State private var itemsToDelete: IndexSet?
+   
     
     private let llmService = LLMService(apiKey: Config.deepInfraKey)
 
@@ -34,7 +30,7 @@ struct ResearchListView: View {
                               generateSummary: generateSummary)
                 
                 ResearchApplicationsSection(researches: researches,
-                                          deleteAction: confirmDelete)
+                                          deleteAction: deleteResearches)
             }
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -54,24 +50,12 @@ struct ResearchListView: View {
                 AddResearchView()
                     .environment(\.managedObjectContext, viewContext)
             }
-            .alert("Delete Applications",
-                   isPresented: $showingDeleteAlert) {
-                Button("Delete", role: .destructive, action: deleteConfirmedResearches)
-                Button("Cancel", role: .cancel) { }
-            } message: {
-                Text("Are you sure you want to delete these research applications?")
-            }
+           
         }
     }
     
-    private func confirmDelete(offsets: IndexSet) {
-        itemsToDelete = offsets
-        showingDeleteAlert = true
-    }
+    private func deleteResearches(offsets: IndexSet) {
     
-    private func deleteConfirmedResearches() {
-        guard let offsets = itemsToDelete else { return }
-        
         withAnimation {
             offsets.map { researches[$0] }.forEach(viewContext.delete)
             do {

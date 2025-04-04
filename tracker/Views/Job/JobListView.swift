@@ -8,8 +8,6 @@
 import SwiftUI
 import CoreData
 
-
-
 struct JobListView: View {
     @Environment(\.managedObjectContext) private var viewContext
     @FetchRequest(
@@ -20,8 +18,6 @@ struct JobListView: View {
     @State private var showingAddView = false
     @State private var summaryText = "Tap analyze to generate insights"
     @State private var isLoading = false
-    @State private var showingDeleteAlert = false
-    @State private var itemsToDelete: IndexSet?
     
     private let llmService = LLMService(apiKey: Config.deepInfraKey)
     
@@ -29,22 +25,20 @@ struct JobListView: View {
         NavigationStack {
             List {
                 AnalysisSection(summaryText: $summaryText,
-                               isLoading: $isLoading,
-                               generateSummary: generateSummary)
+                             isLoading: $isLoading,
+                             generateSummary: generateSummary)
                 
                 RecentApplicationsSection(jobs: jobs,
-                                       deleteAction: confirmDelete)
+                                       deleteAction: deleteJobs)
             }
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
-                // Centered small title
                 ToolbarItem(placement: .principal) {
                     Text("Job Applications")
                         .font(.headline)
                         .foregroundColor(.primary)
                 }
                 
-                // Add button
                 ToolbarItem(placement: .navigationBarTrailing) {
                     Button(action: { showingAddView = true }) {
                         Label("Add", systemImage: "plus")
@@ -55,24 +49,10 @@ struct JobListView: View {
                 AddJobView()
                     .environment(\.managedObjectContext, viewContext)
             }
-            .alert("Delete Applications",
-                  isPresented: $showingDeleteAlert) {
-                Button("Delete", role: .destructive, action: deleteConfirmedJobs)
-                Button("Cancel", role: .cancel) { }
-            } message: {
-                Text("Are you sure you want to delete these applications?")
-            }
         }
     }
     
-    private func confirmDelete(offsets: IndexSet) {
-        itemsToDelete = offsets
-        showingDeleteAlert = true
-    }
-    
-    private func deleteConfirmedJobs() {
-        guard let offsets = itemsToDelete else { return }
-        
+    private func deleteJobs(offsets: IndexSet) {
         withAnimation {
             offsets.map { jobs[$0] }.forEach(viewContext.delete)
             do {
@@ -95,8 +75,7 @@ struct JobListView: View {
     }
 }
 
-// MARK: - Subviews
-
+// MARK: - Subviews (unchanged)
 private struct AnalysisSection: View {
     @Binding var summaryText: String
     @Binding var isLoading: Bool
@@ -138,9 +117,9 @@ private struct RecentApplicationsSection: View {
                 ForEach(jobs) { job in
                     NavigationLink(destination: JobDetailView(job: job)) {
                         VStack(alignment: .leading) {
-                            Text(job.companyName )
+                            Text(job.companyName)
                                 .font(.headline)
-                            Text(job.positionName )
+                            Text(job.positionName)
                                 .font(.subheadline)
                             Text(job.applyDate.formatted(date: .abbreviated, time: .omitted))
                                 .font(.caption)
@@ -154,8 +133,7 @@ private struct RecentApplicationsSection: View {
     }
 }
 
-// MARK: - Preview
-
+// MARK: - Preview (unchanged)
 struct JobListView_Previews: PreviewProvider {
     static var previews: some View {
         let context = PersistenceController.preview.container.viewContext
