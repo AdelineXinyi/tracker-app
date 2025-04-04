@@ -199,8 +199,7 @@ private struct SkillRow: View {
         }
         .padding(.vertical, 8)
         .background(
-            RoundedRectangle(cornerRadius: 8)
-                .fill(skill.skillColor.opacity(0.1)))
+            Color.clear)
     }
 }
 
