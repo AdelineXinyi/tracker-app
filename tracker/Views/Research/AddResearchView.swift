@@ -16,6 +16,7 @@ struct AddResearchView: View {
     @State private var professorName = ""
     @State private var researchField = ""
     @State private var status = "Preparing"
+    @State private var applyDate = Date()
     
     let statusOptions = ["Preparing", "Submitted", "Under Review", "Accepted", "Rejected"]
     
@@ -25,9 +26,11 @@ struct AddResearchView: View {
                 Section(header: Text("Institution Info")) {
                     TextField("University Name", text: $universityName)
                     TextField("Professor Name", text: $professorName)
+                    
                 }
                 
                 Section(header: Text("Research Details")) {
+                    DatePicker("Apply Date", selection: $applyDate, displayedComponents: .date)
                     TextField("Research Field", text: $researchField)
                     Picker("Status", selection: $status) {
                         ForEach(statusOptions, id: \.self) { status in
@@ -42,7 +45,7 @@ struct AddResearchView: View {
                         newResearch.universityName = universityName
                         newResearch.professorName = professorName
                         newResearch.researchField = researchField
-                        newResearch.applyDate = Date()
+                        newResearch.applyDate = applyDate
                         newResearch.status = status
                         
                         do {

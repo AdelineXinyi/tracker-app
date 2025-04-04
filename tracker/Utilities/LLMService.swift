@@ -29,7 +29,8 @@ struct LLMService {
         let payload: [String: Any] = [
             "model": "mistralai/Mistral-7B-Instruct-v0.1",  // DeepInfra model name
             "messages": [
-                ["role": "system", "content": "You're a career coach..."],
+                ["role": "system", 
+                 "content": "do summary less than 50 words for status with !simple, !warm, !supportive language with greetings.use emoji"],
                 ["role": "user", "content": text]
             ],
             "temperature": 0.3

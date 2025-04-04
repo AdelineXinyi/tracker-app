@@ -17,6 +17,22 @@ public class ResearchApplication: NSManagedObject, Identifiable {
     @NSManaged public var applyDate: Date
     @NSManaged public var status: String
     
+    convenience init(
+        uni: String,
+        professor: String,
+        field: [String],
+        status: ResearchStatus,
+        context: NSManagedObjectContext
+    ) {
+        let entity = NSEntityDescription.entity(forEntityName: "JobApplication", in: context)!
+        self.init(entity: entity, insertInto: context)
+        self.universityName = uni
+        self.professorName = professor
+        self.applyDate = Date()
+        self.researchField = field.joined(separator: ",")
+        self.status = status.rawValue
+    }
+    
     // MARK: - Enums
     public enum ResearchStatus: String, CaseIterable {
         case preparing = "Preparing"
@@ -27,36 +43,19 @@ public class ResearchApplication: NSManagedObject, Identifiable {
     }
     
     // MARK: - Computed Properties
-    public var id: UUID {
-        return UUID()
+    public var id: NSManagedObjectID {
+        return self.objectID
     }
     
-    var formattedApplyDate: String {
-        let formatter = DateFormatter()
-        formatter.dateStyle = .medium
-        return formatter.string(from: applyDate)
-    }
+    
     
     // MARK: - Fetch Requests
     @nonobjc public class func fetchRequest() -> NSFetchRequest<ResearchApplication> {
         return NSFetchRequest<ResearchApplication>(entityName: "ResearchApplication")
     }
     
-    // MARK: - CRUD Operations
-    static func create(
-        university: String,
-        professor: String,
-        field: String,
-        status: ResearchStatus,
-        in context: NSManagedObjectContext
-    ) -> ResearchApplication {
-        let newResearch = ResearchApplication(context: context)
-        newResearch.universityName = university
-        newResearch.professorName = professor
-        newResearch.researchField = field
-        newResearch.applyDate = Date()
-        newResearch.status = status.rawValue
-        return newResearch
+    func updateStatus(_ newStatus: ResearchStatus) {
+            self.status = newStatus.rawValue
     }
     
     static func recentApplications(in context: NSManagedObjectContext, limit: Int = 5) -> [ResearchApplication] {

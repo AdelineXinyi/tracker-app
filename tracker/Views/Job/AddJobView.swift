@@ -16,6 +16,7 @@ struct AddJobView: View {
     @State private var positionName = ""
     @State private var applyDate = Date()
     @State private var status = "Applied"
+    @State private var requiredSkills = ""
     
     let statusOptions = ["Applied", "Interview", "Offer", "Rejected"]
     
@@ -26,6 +27,16 @@ struct AddJobView: View {
                     TextField("Company Name", text: $companyName)
                     TextField("Position", text: $positionName)
                     DatePicker("Apply Date", selection: $applyDate, displayedComponents: .date)
+                    TextEditor(text: $requiredSkills)
+                        .frame(minHeight: 100)
+                        .overlay(
+                            requiredSkills.isEmpty ?
+                            Text("programming language...\n(One per line)")
+                                .foregroundColor(.secondary)
+                                .padding(.top, 8)
+                                .padding(.leading, 4) : nil,
+                            alignment: .topLeading
+                        )
                 }
                 
                 Section(header: Text("Status")) {
@@ -62,6 +73,7 @@ struct AddJobView: View {
             newJob.positionName = positionName
             newJob.applyDate = applyDate
             newJob.status = status
+            newJob.requiredSkills = requiredSkills
             
             CoreDataHelper.saveContext()
             presentationMode.wrappedValue.dismiss()
