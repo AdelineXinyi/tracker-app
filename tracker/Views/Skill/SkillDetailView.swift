@@ -390,17 +390,17 @@ struct SliderColorPicker: View {
                 customColorSlider(value: $red,
                                   // Lighter green to yellow gradient like in second image
                                   gradientColors: [Color(red: 0.5, green: 1, blue: 0.8), Color(red: 1.0, green: 0.98, blue: 0.7)],
-                                  label: "红色")
+                                  label: "")
                 
                 customColorSlider(value: $green,
                                   // Lighter purple to green gradient like in second image
                                   gradientColors: [Color(red: 0.9, green: 0.5, blue: 0.9), Color(red: 0.7, green: 0.98, blue: 0.7)],
-                                  label: "绿色")
+                                  label: "")
                 
                 customColorSlider(value: $blue,
                                   // Lighter yellow to blue gradient like in second image
                                   gradientColors: [Color(red: 0.95, green: 0.95, blue: 0.5), Color(red: 0.7, green: 0.85, blue: 0.98)],
-                                  label: "蓝色")
+                                  label: "")
             }
             .padding(.top, 10)
             

@@ -19,7 +19,7 @@ struct ResearchListView: View {
     private var researches: FetchedResults<ResearchApplication>
     
     @State private var showingAddView = false
-    @State private var summaryText = "Tap analyze to generate insights"
+    @State private var summaryText = ""
     @State private var isLoading = false
     @State private var showingDeleteAlert = false
     @State private var itemsToDelete: IndexSet?
@@ -101,29 +101,51 @@ private struct AnalysisSection: View {
     @Binding var isLoading: Bool
     var generateSummary: () async -> Void
     
+    private let fixedHeight: CGFloat = 120
+    
     var body: some View {
         Section(header: Text("AI Analysis")) {
-            VStack(alignment: .leading, spacing: 8) {
-                Text(summaryText)
-                    .font(.subheadline)
+            ZStack {
+                // Image background with proper implementation
+                Image("bg") // Your image named "bg"
+                    .resizable()
+                    .aspectRatio(contentMode: .fill)
+                    .frame(height: fixedHeight)
+                    .overlay(Color.white.opacity(0.7)) // White overlay for readability
+                    .clipShape(RoundedRectangle(cornerRadius: 10)) // Rounded corners
                 
-                if isLoading {
-                    ProgressView()
-                        .frame(maxWidth: .infinity)
-                } else {
-                    Button(action: {
-                        Task { await generateSummary() }
-                    }) {
-                        Text("Analyze Trends")
-                            .font(.caption)
+                // Content
+                VStack(spacing: 8) {
+                    ScrollView(.vertical) {
+                        Text(summaryText)
+                            .font(.subheadline)
+                            .foregroundColor(.black) // Ensure text is readable
+                            .padding(.horizontal, 12)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                    }
+                    .frame(height: fixedHeight - 40) // Adjusted height
+                    
+                    if isLoading {
+                        ProgressView()
+                            .offset(y: -35) // Adjusted position
+                            .frame(maxWidth: .infinity)
                     }
                 }
+                .padding(.vertical, 8)
             }
-            .padding(.vertical, 8)
+            .frame(height: fixedHeight)
+            .padding(.vertical, 4)
+            .contentShape(Rectangle())
+            .onTapGesture {
+                if !isLoading {
+                    Task { await generateSummary() }
+                }
+            }
         }
+        .listRowInsets(EdgeInsets(top: 0, leading: 0, bottom: 0, trailing: 0))
+        .listRowSeparator(.hidden)
     }
 }
-
 private struct ResearchApplicationsSection: View {
     var researches: FetchedResults<ResearchApplication>
     var deleteAction: (IndexSet) -> Void
