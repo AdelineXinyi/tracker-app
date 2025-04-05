@@ -18,8 +18,10 @@ public class SkillLearning: NSManagedObject, Identifiable {
     @NSManaged public var startDate: Date
     @NSManaged public var targetDate: Date
     @NSManaged public var progress: Float
-    @NSManaged @objc dynamic public var resources: String?
+    @NSManaged public var resources: String?
     @NSManaged public var colorData: Data?
+    @NSManaged public var dailyUpdates: NSObject? // Transformable for DailyUpdate array
+    @NSManaged public var lastUpdateDate: Date?
     
     // MARK: - Color Management
     public var skillColor: Color {
@@ -58,34 +60,51 @@ public class SkillLearning: NSManagedObject, Identifiable {
         resources?.components(separatedBy: "\n").filter { !$0.isEmpty } ?? []
     }
     
-    // MARK: - KVO Compliance
-    @objc class func keyPathsForValuesAffectingResources() -> Set<String> {
-        return []
+    var wrappedDailyUpdates: [DailyUpdate] {
+        get {
+            (dailyUpdates as? [DailyUpdate]) ?? []
+        }
+        set {
+            dailyUpdates = newValue as NSObject
+        }
+    }
+    
+    // MARK: - Daily Update Management
+    func addDailyUpdate(notes: String) {
+        var currentUpdates = wrappedDailyUpdates
+        let newUpdate = DailyUpdate(date: Date(), notes: notes)
+        currentUpdates.append(newUpdate)
+        wrappedDailyUpdates = currentUpdates
+        lastUpdateDate = Date()
+    }
+    
+    func removeDailyUpdate(_ update: DailyUpdate) {
+        var currentUpdates = wrappedDailyUpdates
+        currentUpdates.removeAll { $0.id == update.id }
+        wrappedDailyUpdates = currentUpdates
+    }
+    
+    func sortedDailyUpdates() -> [DailyUpdate] {
+        wrappedDailyUpdates.sorted { $0.date > $1.date }
     }
     
     // MARK: - Resource Management
-    @objc func addResource(_ resource: String) {
+    func addResource(_ resource: String) {
         guard !resource.isEmpty else { return }
         
-        self.willChangeValue(for: \.resources)
         var current = resourceLinks
         current.append(resource)
         self.resources = current.joined(separator: "\n")
-        self.didChangeValue(for: \.resources)
     }
     
-    @objc func removeResource(_ resource: String) {
-        self.willChangeValue(for: \.resources)
+    func removeResource(_ resource: String) {
         var current = resourceLinks
         current.removeAll { $0 == resource }
         self.resources = current.joined(separator: "\n")
-        self.didChangeValue(for: \.resources)
     }
     
-    @objc func setResourcesArray(_ resources: [String]) {
-        self.willChangeValue(for: \.resources)
+    func setResourcesArray(_ resources: [String]) {
         self.resources = resources.joined(separator: "\n")
-        self.didChangeValue(for: \.resources)
     }
     
     // MARK: - Fetch Requests
@@ -110,6 +129,7 @@ public class SkillLearning: NSManagedObject, Identifiable {
         newSkill.progress = progress
         newSkill.setResourcesArray(resources)
         newSkill.skillColor = color ?? Color.blue
+        newSkill.dailyUpdates = [] as NSObject
         return newSkill
     }
     
@@ -123,10 +143,13 @@ public class SkillLearning: NSManagedObject, Identifiable {
         
         do {
             let results = try context.fetch(request)
-            // Ensure all skills have a color
+            // Ensure all skills have a color and empty updates array
             results.forEach { skill in
                 if skill.colorData == nil {
                     skill.assignRandomColor()
+                }
+                if skill.dailyUpdates == nil {
+                    skill.dailyUpdates = [] as NSObject
                 }
             }
             return results
@@ -149,5 +172,23 @@ public class SkillLearning: NSManagedObject, Identifiable {
         if colorData == nil {
             assignRandomColor()
         }
+        
+        // Ensure dailyUpdates is never nil
+        if dailyUpdates == nil {
+            dailyUpdates = [] as NSObject
+        }
+    }
+}
+
+// MARK: - DailyUpdate Model
+struct DailyUpdate: Identifiable, Codable {
+    let id: UUID
+    let date: Date
+    let notes: String
+    
+    init(date: Date, notes: String) {
+        self.id = UUID()
+        self.date = date
+        self.notes = notes
     }
 }

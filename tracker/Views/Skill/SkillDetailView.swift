@@ -1,6 +1,9 @@
 import SwiftUI
 import CoreData
 
+import SwiftUI
+import CoreData
+
 struct SkillDetailView: View {
     @Environment(\.managedObjectContext) private var viewContext
     @Environment(\.dismiss) private var dismiss
@@ -10,8 +13,14 @@ struct SkillDetailView: View {
     @State private var showingResourceSheet = false
     @State private var showingColorPicker = false
     @State private var newResource = ""
+    @State private var showingUpdateSheet = false
+    @State private var todaysUpdate = ""
     
     // Computed properties
+    private var updates: [DailyUpdate] {
+        skill.sortedDailyUpdates()
+    }
+    
     private var daysRemaining: Int {
         Calendar.current.dateComponents([.day], from: Date(), to: skill.targetDate).day ?? 0
     }
@@ -113,6 +122,57 @@ struct SkillDetailView: View {
                 .padding()
                 .frame(maxWidth: .infinity, alignment: .leading)
                 
+                // Daily Updates Section
+                VStack(alignment: .leading, spacing: 10) {
+                    HStack {
+                        Text("Daily Updates")
+                            .font(.headline)
+                        
+                        Spacer()
+                        
+                        Button(action: { showingUpdateSheet = true }) {
+                            Image(systemName: "plus")
+                        }
+                        .buttonStyle(.plain)
+                    }
+                    
+                    if updates.isEmpty {
+                        ContentUnavailableView(
+                            "No Updates Yet",
+                            systemImage: "calendar.badge.plus",
+                            description: Text("Add your first update to track daily progress")
+                        )
+                    } else {
+                        ForEach(updates) { update in
+                            VStack(alignment: .leading, spacing: 4) {
+                                HStack {
+                                    Text(update.date.formatted(date: .abbreviated, time: .omitted))
+                                        .font(.caption)
+                                        .foregroundColor(.secondary)
+                                    
+                                    Spacer()
+                                    
+                                    Button(action: { removeUpdate(update) }) {
+                                        Image(systemName: "trash")
+                                            .foregroundColor(.red)
+                                            .font(.caption)
+                                    }
+                                }
+                                
+                                Text(update.notes)
+                                    .font(.subheadline)
+                            }
+                            .padding()
+                            .background(Color(.secondarySystemGroupedBackground))
+                            .cornerRadius(8)
+                        }
+                    }
+                }
+                .padding()
+                .background(Color(.systemBackground))
+                .clipShape(RoundedRectangle(cornerRadius: 12))
+                .shadow(radius: 2)
+                
                 // Resources Section
                 VStack(alignment: .leading, spacing: 10) {
                     HStack {
@@ -196,6 +256,10 @@ struct SkillDetailView: View {
             resourceInputSheet
                 .presentationBackground(.clear)
         }
+        .sheet(isPresented: $showingUpdateSheet) {
+            dailyUpdateSheet
+                .presentationBackground(.clear)
+        }
     }
     
     private func saveChanges() {
@@ -229,6 +293,25 @@ struct SkillDetailView: View {
         }
     }
     
+    private func addDailyUpdate() {
+        let trimmedUpdate = todaysUpdate.trimmed
+        guard !trimmedUpdate.isEmpty else { return }
+        
+        viewContext.perform {
+            skill.addDailyUpdate(notes: trimmedUpdate)
+            todaysUpdate = ""
+            saveChanges()
+            showingUpdateSheet = false
+        }
+    }
+    
+    private func removeUpdate(_ update: DailyUpdate) {
+        viewContext.perform {
+            skill.removeDailyUpdate(update)
+            saveChanges()
+        }
+    }
+    
     private var resourceInputSheet: some View {
         NavigationStack {
             Form {
@@ -245,11 +328,38 @@ struct SkillDetailView: View {
                 }
             }
             .navigationTitle("Add Resource")
-           
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
                     Button("Cancel") {
                         showingResourceSheet = false
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+        }
+    }
+    
+    private var dailyUpdateSheet: some View {
+        NavigationStack {
+            Form {
+                Section("Today's Progress") {
+                    TextEditor(text: $todaysUpdate)
+                        .frame(minHeight: 100)
+                        .autocapitalization(.sentences)
+                }
+                
+                Section {
+                    Button("Add Update") {
+                        addDailyUpdate()
+                    }
+                    .disabled(todaysUpdate.trimmed.isEmpty)
+                }
+            }
+            .navigationTitle("Daily Update")
+            .toolbar {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button("Cancel") {
+                        showingUpdateSheet = false
                     }
                     .buttonStyle(.plain)
                 }
@@ -374,7 +484,6 @@ struct SliderColorPicker: View {
     
     var body: some View {
         VStack(spacing: 5) {
-            // Color Preview - slightly smaller than before
             RoundedRectangle(cornerRadius: 10)
                 .fill(color)
                 .frame(height: 80)
@@ -383,24 +492,20 @@ struct SliderColorPicker: View {
                         .stroke(Color.white, lineWidth: 1)
                 )
                 .padding(.horizontal)
-                .padding(.top, 50) // Add padding to create space between this and "Done" button
+                .padding(.top, 50)
             
-            // RGB Sliders
             VStack(spacing: 5) {
                 customColorSlider(value: $red,
-                                  // Lighter green to yellow gradient like in second image
-                                  gradientColors: [Color(red: 0.5, green: 1, blue: 0.8), Color(red: 1.0, green: 0.98, blue: 0.7)],
-                                  label: "")
+                                gradientColors: [Color(red: 0.5, green: 1, blue: 0.8), Color(red: 1.0, green: 0.98, blue: 0.7)],
+                                label: "")
                 
                 customColorSlider(value: $green,
-                                  // Lighter purple to green gradient like in second image
-                                  gradientColors: [Color(red: 0.9, green: 0.5, blue: 0.9), Color(red: 0.7, green: 0.98, blue: 0.7)],
-                                  label: "")
+                                gradientColors: [Color(red: 0.9, green: 0.5, blue: 0.9), Color(red: 0.7, green: 0.98, blue: 0.7)],
+                                label: "")
                 
                 customColorSlider(value: $blue,
-                                  // Lighter yellow to blue gradient like in second image
-                                  gradientColors: [Color(red: 0.95, green: 0.95, blue: 0.5), Color(red: 0.7, green: 0.85, blue: 0.98)],
-                                  label: "")
+                                gradientColors: [Color(red: 0.95, green: 0.95, blue: 0.5), Color(red: 0.7, green: 0.85, blue: 0.98)],
+                                label: "")
             }
             .padding(.top, 10)
             
@@ -419,7 +524,6 @@ struct SliderColorPicker: View {
             
             GeometryReader { geometry in
                 ZStack(alignment: .leading) {
-                    // Gradient track - using the new colors
                     Capsule()
                         .fill(
                             LinearGradient(
@@ -430,7 +534,6 @@ struct SliderColorPicker: View {
                         )
                         .frame(height: 32)
                     
-                    // Thumb
                     Circle()
                         .fill(Color.white)
                         .frame(width: 36, height: 36)
@@ -477,6 +580,9 @@ struct SliderColorPicker: View {
             skill.targetDate = Date().addingTimeInterval(60*60*24*30)
             skill.progress = 0.82
             skill.skillColor = .purple
+            skill.addDailyUpdate(notes: "Worked on Core Data integration")
+            skill.addDailyUpdate(notes: "Practiced animation techniques")
+            skill.addResource("SwiftUI Documentation")
             return skill
         }())
     }
